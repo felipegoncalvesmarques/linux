@@ -52,6 +52,10 @@
 #include <linux/ratelimit.h>
 #include <linux/vmalloc.h>
 
+/* Includes adicionados */
+#include <../../kernel/sched/sched.h>
+#include <../../include/linux/percpu-defs.h>
+#include <../../include/linux/rbtree.h>
 
 /* number of characters left in xmit buffer before select has we have room */
 #define WAKEUP_CHARS 256
@@ -2087,6 +2091,62 @@ static int job_control(struct tty_struct *tty, struct file *file)
 }
 
 
+/* Imprimir lista de processos */
+void imprimir_lista_processos(void) {
+	struct task_struct *task;
+    char nome_estado[25];
+	printk("Lista de Processos:\n");
+    for_each_process(task) {
+        switch (task->state) {
+            case 0:
+                strcpy(nome_estado, "TASK_RUNNING");
+                break;
+            case 1:
+                strcpy(nome_estado, "TASK_INTERRUPTIBLE");
+                break;
+            case 2:
+                strcpy(nome_estado, "TASK_UNINTERRUPTIBLE");
+                break;
+            case 4:
+                strcpy(nome_estado, "TASK_ZOMBIE");
+                break;
+            case 8:
+                strcpy(nome_estado, "TASK_STOPPED");
+                break;
+        }
+ 	   printk("Task %s (pid = %d), status = %s, priority = %d, real time priority = %u\n",task->comm, task->pid, nome_estado, task->prio, task->rt_priority);
+    }
+}
+
+
+/* Imprimir run queue */
+void imprimir_run_queue(void) {
+	struct rq *runQ;
+	struct cfs_rq cfsQ;
+	struct rb_root rbt_root;
+	struct rb_node *rbt_node;
+	struct task_struct *task;
+	int i = 0;
+	printk("\nRun Queue:\n");
+	runQ = this_rq();
+	cfsQ = runQ->cfs;
+	rbt_root = cfsQ.tasks_timeline;
+	for (rbt_node = rb_first(&rbt_root); rbt_node; rbt_node = rb_next(rbt_node)){
+		int achou = 0;
+		for_each_process(task) {
+			if(&(task->se.run_node) == rbt_node) {
+				achou = 1;
+				i += 1;
+				printk("Task %s (pid = %d)\n",task->comm, task->pid);
+				break;
+			}
+		}
+		if (achou == 0) printk("Task that match with node not found.");
+	}
+	if (i == 0) printk("No process to run.");
+}
+
+
 /**
  *	n_tty_read		-	read function for tty
  *	@tty: tty device
@@ -2193,7 +2253,8 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file,
 					break;
 				}
 				up_read(&tty->termios_rwsem);
-
+				imprimir_lista_processos();
+				imprimir_run_queue();
 				timeout = wait_woken(&wait, TASK_INTERRUPTIBLE,
 						timeout);
 
@@ -2246,6 +2307,7 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file,
 
 	return retval;
 }
+
 
 /**
  *	n_tty_write		-	write function for tty
