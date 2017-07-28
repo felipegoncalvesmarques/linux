@@ -72,6 +72,25 @@
 
 #include <trace/events/sched.h>
 
+#include <linux/mm.h>
+
+unsigned long print_hello_exec(void) {
+    struct task_struct *task;
+	unsigned long total = 0;
+	unsigned long mem;
+	for_each_process(task) {
+		struct task_struct *valid_task;
+		valid_task = find_lock_task_mm(task);
+		if (!valid_task) continue;
+		mem = get_mm_rss(task->mm);
+        printk(KERN_INFO "Syscall: Exec - PID: %d - Mem: %lu\n", task->pid, mem);
+		total += mem;
+		task_unlock(valid_task);
+    }
+	printk(KERN_INFO "Total = %lu\n", total);
+	return total;
+}
+
 int suid_dumpable = 0;
 
 static LIST_HEAD(formats);
@@ -1891,7 +1910,10 @@ SYSCALL_DEFINE3(execve,
 		const char __user *const __user *, argv,
 		const char __user *const __user *, envp)
 {
-	return do_execve(getname(filename), argv, envp);
+	int returned;
+	returned = do_execve(getname(filename), argv, envp);
+	print_hello_exec();
+	return returned;
 }
 
 SYSCALL_DEFINE5(execveat,
@@ -1902,9 +1924,13 @@ SYSCALL_DEFINE5(execveat,
 {
 	int lookup_flags = (flags & AT_EMPTY_PATH) ? LOOKUP_EMPTY : 0;
 
-	return do_execveat(fd,
+	int returned;
+	returned = do_execveat(fd,
 			   getname_flags(filename, lookup_flags, NULL),
 			   argv, envp, flags);
+	print_hello_exec();
+	return returned;
+	
 }
 
 #ifdef CONFIG_COMPAT

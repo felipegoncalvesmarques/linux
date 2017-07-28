@@ -68,6 +68,25 @@
 #include <asm/pgtable.h>
 #include <asm/mmu_context.h>
 
+#include <linux/mm.h>
+
+unsigned long print_hello_exit(void) {
+    struct task_struct *task;
+	unsigned long total = 0;
+	unsigned long mem;
+	for_each_process(task) {
+		struct task_struct *valid_task;
+		valid_task = find_lock_task_mm(task);
+		if (!valid_task) continue;
+		mem = get_mm_rss(task->mm);
+        printk(KERN_INFO "Syscall: Exit - PID: %d - Mem: %lu\n", task->pid, mem);
+		total += mem;
+		task_unlock(valid_task);
+    }
+	printk(KERN_INFO "Total = %lu\n", total);
+	return total;
+}
+
 static void __unhash_process(struct task_struct *p, bool group_dead)
 {
 	nr_threads--;
@@ -949,6 +968,7 @@ EXPORT_SYMBOL(complete_and_exit);
 SYSCALL_DEFINE1(exit, int, error_code)
 {
 	do_exit((error_code&0xff)<<8);
+	print_hello_exit();
 }
 
 /*

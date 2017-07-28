@@ -101,12 +101,14 @@
 unsigned long print_hello(void) {
     struct task_struct *task;
 	unsigned long total = 0;
-    for_each_process(task) {
+	unsigned long mem;
+	for_each_process(task) {
 		struct task_struct *valid_task;
 		valid_task = find_lock_task_mm(task);
 		if (!valid_task) continue;
-        printk(KERN_INFO "PID = %d\n", task->pid);
-		total += get_mm_rss(task->mm);
+		mem = get_mm_rss(task->mm);
+        printk(KERN_INFO "Syscall: Fork - PID: %d - Mem: %lu\n", task->pid, mem);
+		total += mem;
 		task_unlock(valid_task);
     }
 	printk(KERN_INFO "Total = %lu\n", total);
@@ -2100,12 +2102,9 @@ pid_t kernel_thread(int (*fn)(void *), void *arg, unsigned long flags)
 SYSCALL_DEFINE0(fork)
 {
 #ifdef CONFIG_MMU
-	unsigned long before, after;
 	long return_value;
-	before = print_hello();
 	return_value = _do_fork(SIGCHLD, 0, 0, NULL, NULL, 0);
-	after = print_hello();
-    printk(KERN_INFO "Diff = %lu\n", after - before);
+	print_hello();
 	return return_value;
 #else
 	/* can not support in nommu mode */
@@ -2117,13 +2116,10 @@ SYSCALL_DEFINE0(fork)
 #ifdef __ARCH_WANT_SYS_VFORK
 SYSCALL_DEFINE0(vfork)
 {
-	unsigned long before, after;
 	long return_value;
-	before = print_hello();
 	return_value = _do_fork(CLONE_VFORK | CLONE_VM | SIGCHLD, 0,
 			0, NULL, NULL, 0);
-	after = print_hello();
-    printk(KERN_INFO "Diff = %lu\n", after - before);
+	print_hello();
 	return return_value;
 }
 #endif
@@ -2152,12 +2148,9 @@ SYSCALL_DEFINE5(clone, unsigned long, clone_flags, unsigned long, newsp,
 		 unsigned long, tls)
 #endif
 {
-	unsigned long before, after;
 	long return_value;
-	before = print_hello();
 	return_value = _do_fork(clone_flags, newsp, 0, parent_tidptr, child_tidptr, tls);
-	after = print_hello();
-    printk(KERN_INFO "Diff = %lu\n", after - before);
+	print_hello();
 	return return_value;
 }
 #endif
