@@ -980,7 +980,7 @@ SYSCALL_DEFINE1(exit, int, error_code)
 	before = print_hello_exit();
 	do_exit((error_code&0xff)<<8);
 	after = print_hello_exit();
-	printk(KERN_INFO "System call (exec) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
+	printk(KERN_INFO "System call (exit) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
 }
 
 /*

@@ -2116,7 +2116,7 @@ SYSCALL_DEFINE0(fork)
 	before = print_hello_fork();
 	return_value = _do_fork(SIGCHLD, 0, 0, NULL, NULL, 0);
 	after = print_hello_fork();
-	printk(KERN_INFO "System call (exec) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
+	printk(KERN_INFO "System call (fork) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
 	return return_value;
 #else
 	/* can not support in nommu mode */
@@ -2134,7 +2134,7 @@ SYSCALL_DEFINE0(vfork)
 	return_value = _do_fork(CLONE_VFORK | CLONE_VM | SIGCHLD, 0,
 			0, NULL, NULL, 0);
 	after = print_hello_fork();
-	printk(KERN_INFO "System call (exec) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
+	printk(KERN_INFO "System call (fork) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
 	return return_value;
 }
 #endif
@@ -2168,7 +2168,7 @@ SYSCALL_DEFINE5(clone, unsigned long, clone_flags, unsigned long, newsp,
 	before = print_hello_fork();
 	return_value = _do_fork(clone_flags, newsp, 0, parent_tidptr, child_tidptr, tls);
 	after = print_hello_fork();
-	printk(KERN_INFO "System call (exec) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
+	printk(KERN_INFO "System call (fork) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
 	return return_value;
 }
 #endif
