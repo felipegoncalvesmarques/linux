@@ -98,20 +98,29 @@
 #include <trace/events/sched.h>
 #include <linux/mm.h>
 
-unsigned long print_hello(void) {
+struct memory_information {
+	unsigned long physical;
+	unsigned long virtual;
+};
+
+struct memory_information print_hello_fork(void) {
     struct task_struct *task;
-	unsigned long total = 0;
-	unsigned long mem;
+	struct memory_information total;
+	unsigned long mem_p, mem_v;
+	total.physical = 0;
+	total.virtual = 0;
 	for_each_process(task) {
 		struct task_struct *valid_task;
 		valid_task = find_lock_task_mm(task);
 		if (!valid_task) continue;
-		mem = get_mm_rss(task->mm);
-        printk(KERN_INFO "Syscall: Fork - PID: %d - Mem: %lu\n", task->pid, mem);
-		total += mem;
+		mem_p = get_mm_rss(task->mm);
+		mem_v = task->mm->task_size;
+        printk(KERN_INFO "Syscall: Fork - PID: %d - Physical Mem: %lu - Virtual Mem: %lu\n", task->pid, mem_p, mem_v);
+		total.physical += mem_p;
+		total.virtual += mem_v;
 		task_unlock(valid_task);
     }
-	printk(KERN_INFO "Total = %lu\n", total);
+	printk(KERN_INFO "Total: Physical = %lu; Virtual = %lu\n", total.physical, total.virtual);
 	return total;
 }
 
@@ -2103,8 +2112,11 @@ SYSCALL_DEFINE0(fork)
 {
 #ifdef CONFIG_MMU
 	long return_value;
+	struct memory_information before, after;
+	before = print_hello_fork();
 	return_value = _do_fork(SIGCHLD, 0, 0, NULL, NULL, 0);
-	print_hello();
+	after = print_hello_fork();
+	printk(KERN_INFO "System call (exec) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
 	return return_value;
 #else
 	/* can not support in nommu mode */
@@ -2117,9 +2129,12 @@ SYSCALL_DEFINE0(fork)
 SYSCALL_DEFINE0(vfork)
 {
 	long return_value;
+	struct memory_information before, after;
+	before = print_hello_fork();
 	return_value = _do_fork(CLONE_VFORK | CLONE_VM | SIGCHLD, 0,
 			0, NULL, NULL, 0);
-	print_hello();
+	after = print_hello_fork();
+	printk(KERN_INFO "System call (exec) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
 	return return_value;
 }
 #endif
@@ -2149,8 +2164,11 @@ SYSCALL_DEFINE5(clone, unsigned long, clone_flags, unsigned long, newsp,
 #endif
 {
 	long return_value;
+	struct memory_information before, after;
+	before = print_hello_fork();
 	return_value = _do_fork(clone_flags, newsp, 0, parent_tidptr, child_tidptr, tls);
-	print_hello();
+	after = print_hello_fork();
+	printk(KERN_INFO "System call (exec) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
 	return return_value;
 }
 #endif

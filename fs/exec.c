@@ -74,20 +74,29 @@
 
 #include <linux/mm.h>
 
-unsigned long print_hello_exec(void) {
+struct memory_information {
+	unsigned long physical;
+	unsigned long virtual;
+};
+
+struct memory_information print_hello_exec(void) {
     struct task_struct *task;
-	unsigned long total = 0;
-	unsigned long mem;
+	struct memory_information total;
+	unsigned long mem_p, mem_v;
+	total.physical = 0;
+	total.virtual = 0;
 	for_each_process(task) {
 		struct task_struct *valid_task;
 		valid_task = find_lock_task_mm(task);
 		if (!valid_task) continue;
-		mem = get_mm_rss(task->mm);
-        printk(KERN_INFO "Syscall: Exec - PID: %d - Mem: %lu\n", task->pid, mem);
-		total += mem;
+		mem_p = get_mm_rss(task->mm);
+		mem_v = task->mm->task_size;
+        printk(KERN_INFO "Syscall: Exec - PID: %d - Physical Mem: %lu - Virtual Mem: %lu\n", task->pid, mem_p, mem_v);
+		total.physical += mem_p;
+		total.virtual += mem_v;
 		task_unlock(valid_task);
     }
-	printk(KERN_INFO "Total = %lu\n", total);
+	printk(KERN_INFO "Total: Physical = %lu; Virtual = %lu\n", total.physical, total.virtual);
 	return total;
 }
 
@@ -1911,8 +1920,11 @@ SYSCALL_DEFINE3(execve,
 		const char __user *const __user *, envp)
 {
 	int returned;
+	struct memory_information before, after;
+	before = print_hello_exec();
 	returned = do_execve(getname(filename), argv, envp);
-	print_hello_exec();
+	after = print_hello_exec();
+	printk(KERN_INFO "System call (exec) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
 	return returned;
 }
 
@@ -1925,10 +1937,13 @@ SYSCALL_DEFINE5(execveat,
 	int lookup_flags = (flags & AT_EMPTY_PATH) ? LOOKUP_EMPTY : 0;
 
 	int returned;
+	struct memory_information before, after;
+	before = print_hello_exec();
 	returned = do_execveat(fd,
 			   getname_flags(filename, lookup_flags, NULL),
 			   argv, envp, flags);
-	print_hello_exec();
+	after = print_hello_exec();
+	printk(KERN_INFO "System call (exec) - \t %lu \t %lu \n", after.physical - before.physical, after.virtual - before.virtual);
 	return returned;
 	
 }
